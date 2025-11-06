@@ -117,6 +117,12 @@ export const GET = async (
       return new Response('Organization name is required', { status: 400 });
     }
 
+    // 잘못된 요청 필터링 (favicon, robots.txt 등)
+    const invalidPaths = ['favicon.ico', 'robots.txt', 'sitemap.xml', 'apple-touch-icon.png'];
+    if (invalidPaths.includes(organization.toLowerCase()) || organization.includes('.')) {
+      return new Response('Not Found', { status: 404 });
+    }
+
     // GitHub API에서 실제 데이터 가져오기
     const languages = await aggregateOrganizationLanguages(organization);
 
@@ -147,16 +153,31 @@ export const GET = async (
   } catch (error) {
     console.error('Error generating SVG:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // 더 친절한 에러 메시지 제공
+    let displayMessage = errorMessage;
+    if (errorMessage.includes('404') || errorMessage.includes('Not Found')) {
+      const { organization } = await params;
+      displayMessage = `Organization '${organization}' not found`;
+    } else if (errorMessage.includes('403') || errorMessage.includes('rate limit')) {
+      displayMessage = 'GitHub API rate limit exceeded. Please try again later.';
+    }
+    
     return new Response(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="100">
-        <text x="250" y="50" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#ff0000">
-          Error: ${errorMessage}
+      `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="120">
+        <rect width="500" height="120" fill="white" rx="10"/>
+        <text x="250" y="50" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ff0000">
+          Error
+        </text>
+        <text x="250" y="80" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#666">
+          ${displayMessage}
         </text>
       </svg>`,
       { 
         status: 500,
         headers: {
           'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
         },
       }
     );

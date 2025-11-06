@@ -95,25 +95,35 @@ export async function fetchOrganizationRepos(org: string): Promise<Repository[]>
     let page = 1;
     const perPage = 100;
     
+    console.log(`Fetching repositories for organization: ${org}`);
+    
     // 페이지네이션 처리 (최대 10페이지 = 1000개 레포지토리)
     while (page <= 10) {
-      const response = await fetch(
-        `https://api.github.com/orgs/${org}/repos?sort=updated&per_page=${perPage}&page=${page}`,
-        {
-          headers: getGitHubHeaders(),
-          cache: 'no-store', // Next.js 캐시 비활성화 (우리가 직접 관리)
-        }
-      );
+      const url = `https://api.github.com/orgs/${org}/repos?sort=updated&per_page=${perPage}&page=${page}`;
+      console.log(`Fetching page ${page}: ${url}`);
+      
+      const response = await fetch(url, {
+        headers: getGitHubHeaders(),
+        cache: 'no-store', // Next.js 캐시 비활성화 (우리가 직접 관리)
+      });
 
       if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`GitHub API Error - Status: ${response.status} ${response.statusText}`);
+        console.error(`Response body: ${errorBody}`);
+        
         if (response.status === 403) {
           console.error('GitHub API rate limit exceeded');
           await checkRateLimit();
+        } else if (response.status === 404) {
+          console.error(`Organization '${org}' not found. Please check the organization name.`);
         }
-        throw new Error(`Failed to fetch repositories: ${response.statusText}`);
+        
+        throw new Error(`Failed to fetch repositories: ${response.status} ${response.statusText}`);
       }
 
       const repos: Repository[] = await response.json();
+      console.log(`Page ${page}: Found ${repos.length} repositories`);
       
       if (repos.length === 0) {
         break; // 더 이상 레포지토리가 없음
@@ -129,11 +139,13 @@ export async function fetchOrganizationRepos(org: string): Promise<Repository[]>
     }
 
     const filteredRepos = allRepos.filter(repo => !repo.fork);
+    console.log(`Total repositories after filtering forks: ${filteredRepos.length}`);
+    
     setCache(cacheKey, filteredRepos);
     return filteredRepos;
   } catch (error) {
     console.error('Error fetching organization repos:', error);
-    return [];
+    throw error; // 에러를 다시 던져서 상위에서 처리하도록
   }
 }
 
@@ -198,57 +210,64 @@ export async function aggregateOrganizationLanguages(
   // Rate limit 확인
   await checkRateLimit();
   
-  // 1. 조직의 모든 레포지토리 가져오기
-  const repos = await fetchOrganizationRepos(org);
+  try {
+    // 1. 조직의 모든 레포지토리 가져오기
+    const repos = await fetchOrganizationRepos(org);
 
-  if (repos.length === 0) {
-    return [];
-  }
+    if (repos.length === 0) {
+      console.warn(`No repositories found for organization: ${org}`);
+      return [];
+    }
 
-  console.log(`Found ${repos.length} repositories for ${org}`);
+    console.log(`Found ${repos.length} repositories for ${org}`);
 
-  // 2. 각 레포지토리의 언어 데이터 가져오기 (배치 처리)
-  // 배치 크기를 50으로 제한하여 rate limit 방지
-  const languagesData = await processBatch(
-    repos,
-    50,
-    (repo) => fetchRepositoryLanguages(org, repo.name)
-  );
+    // 2. 각 레포지토리의 언어 데이터 가져오기 (배치 처리)
+    // 배치 크기를 50으로 제한하여 rate limit 방지
+    const languagesData = await processBatch(
+      repos,
+      50,
+      (repo) => fetchRepositoryLanguages(org, repo.name)
+    );
 
-  // 3. 언어별로 bytes 합산
-  const aggregated: { [language: string]: number } = {};
+    // 3. 언어별로 bytes 합산
+    const aggregated: { [language: string]: number } = {};
 
-  languagesData.forEach(repoLanguages => {
-    Object.entries(repoLanguages).forEach(([language, bytes]) => {
-      if (aggregated[language]) {
-        aggregated[language] += bytes;
-      } else {
-        aggregated[language] = bytes;
-      }
+    languagesData.forEach(repoLanguages => {
+      Object.entries(repoLanguages).forEach(([language, bytes]) => {
+        if (aggregated[language]) {
+          aggregated[language] += bytes;
+        } else {
+          aggregated[language] = bytes;
+        }
+      });
     });
-  });
 
-  // 4. 총 bytes 계산
-  const totalBytes = Object.values(aggregated).reduce((sum, bytes) => sum + bytes, 0);
+    // 4. 총 bytes 계산
+    const totalBytes = Object.values(aggregated).reduce((sum, bytes) => sum + bytes, 0);
 
-  if (totalBytes === 0) {
-    return [];
+    if (totalBytes === 0) {
+      console.warn(`No language data found for organization: ${org}`);
+      return [];
+    }
+
+    // 5. 퍼센트 계산 및 정렬
+    const result: AggregatedLanguageStats[] = Object.entries(aggregated)
+      .map(([language, bytes]) => ({
+        language,
+        bytes,
+        percentage: (bytes / totalBytes) * 100,
+        color: getLanguageColor(language),
+      }))
+      .sort((a, b) => b.percentage - a.percentage);
+
+    // 결과 캐시 저장
+    setCache(cacheKey, result);
+
+    return result;
+  } catch (error) {
+    console.error(`Error aggregating languages for ${org}:`, error);
+    throw error; // 에러를 다시 던져서 API route에서 적절한 응답을 보낼 수 있도록
   }
-
-  // 5. 퍼센트 계산 및 정렬
-  const result: AggregatedLanguageStats[] = Object.entries(aggregated)
-    .map(([language, bytes]) => ({
-      language,
-      bytes,
-      percentage: (bytes / totalBytes) * 100,
-      color: getLanguageColor(language),
-    }))
-    .sort((a, b) => b.percentage - a.percentage);
-
-  // 결과 캐시 저장
-  setCache(cacheKey, result);
-
-  return result;
 }
 
 // 언어별 GitHub 표준 색상
