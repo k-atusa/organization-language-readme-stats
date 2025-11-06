@@ -4,7 +4,22 @@ import { aggregateOrganizationLanguages, AggregatedLanguageStats } from '@/lib/g
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const generateSVG = (languages: AggregatedLanguageStats[], organization: string): string => {
+const generateSVG = (languages: AggregatedLanguageStats[], organization: string, theme: 'light' | 'dark' = 'light'): string => {
+  
+  // 테마별 색상 정의
+  const colors = theme === 'dark' ? {
+    background: '#1a1a1a',
+    border: '#444',
+    title: '#58a6ff',
+    textPrimary: '#e6edf3',
+    textSecondary: '#8b949e',
+  } : {
+    background: '#ffffff',
+    border: '#e0e0e0',
+    title: '#2b7de9',
+    textPrimary: '#333333',
+    textSecondary: '#666666',
+  };
   
   // 바 그래프용 좌표 계산
   let currentX = 0;
@@ -70,25 +85,25 @@ const generateSVG = (languages: AggregatedLanguageStats[], organization: string)
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
           font-size: 24px;
           font-weight: 700;
-          fill: #2b7de9;
+          fill: ${colors.title};
         }
         .lang-name { 
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
           font-size: 16px;
           font-weight: 600;
-          fill: #333;
+          fill: ${colors.textPrimary};
         }
         .lang-percent { 
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
           font-size: 16px;
           font-weight: 600;
-          fill: #666;
+          fill: ${colors.textSecondary};
         }
       </style>
 
       <!-- Background with border -->
-      <rect width="500" height="${totalHeight}" fill="white" rx="10"/>
-      <rect x="0.5" y="0.5" width="499" height="${totalHeight - 1}" fill="none" stroke="#e0e0e0" stroke-width="1" rx="9.5"/>
+      <rect width="500" height="${totalHeight}" fill="${colors.background}" rx="10"/>
+      <rect x="0.5" y="0.5" width="499" height="${totalHeight - 1}" fill="none" stroke="${colors.border}" stroke-width="1" rx="9.5"/>
       
       <!-- Title -->
       <text x="20" y="35" class="title">Most Used Languages</text>
@@ -131,6 +146,8 @@ export const GET = async (
     const { searchParams } = new URL(request.url);
     const excludeParam = searchParams.get('exclude');
     const maxParam = searchParams.get('max');
+    const themeParam = searchParams.get('theme');
+    const theme = themeParam === 'dark' ? 'dark' : 'light';
     
     // 1. 제외할 언어 처리
     if (excludeParam) {
@@ -185,9 +202,13 @@ export const GET = async (
     }
 
     if (languages.length === 0) {
+      const bgColor = theme === 'dark' ? '#1a1a1a' : '#ffffff';
+      const textColor = theme === 'dark' ? '#8b949e' : '#666666';
+      
       return new Response(
         `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="100">
-          <text x="250" y="50" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#666">
+          <rect width="500" height="100" fill="${bgColor}" rx="10"/>
+          <text x="250" y="50" text-anchor="middle" font-family="sans-serif" font-size="14" fill="${textColor}">
             No language data found for organization: ${organization}
           </text>
         </svg>`,
@@ -200,7 +221,7 @@ export const GET = async (
       );
     }
 
-    const svg = generateSVG(languages, organization);
+    const svg = generateSVG(languages, organization, theme);
 
     return new Response(svg, {
       headers: {

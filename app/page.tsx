@@ -6,9 +6,10 @@ export default function HomePage() {
   const [org, setOrg] = useState('');
   const [excludeLanguages, setExcludeLanguages] = useState('');
   const [maxLanguages, setMaxLanguages] = useState('');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [copied, setCopied] = useState(false);
 
-  // URL 생성 (제외할 언어와 최대 개수가 있으면 쿼리 파라미터 추가)
+  // URL 생성 (제외할 언어, 최대 개수, 테마가 있으면 쿼리 파라미터 추가)
   const getImageUrl = () => {
     const baseUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${org}`;
     const params = new URLSearchParams();
@@ -22,6 +23,10 @@ export default function HomePage() {
       if (maxNum > 0) {
         params.append('max', maxNum.toString());
       }
+    }
+    
+    if (theme === 'dark') {
+      params.append('theme', 'dark');
     }
     
     const queryString = params.toString();
@@ -80,6 +85,22 @@ export default function HomePage() {
           />
           <small>
             Maximum number of languages to display. Others will be grouped as &quot;ETC&quot;
+          </small>
+        </div>
+
+        <div className="input-section">
+          <label htmlFor="theme-select">Theme</label>
+          <select
+            id="theme-select"
+            value={theme}
+            onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+            className="theme-select"
+          >
+            <option value="light">Light (default)</option>
+            <option value="dark">Dark</option>
+          </select>
+          <small>
+            Choose the color theme for the statistics card
           </small>
         </div>
 
