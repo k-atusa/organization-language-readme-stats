@@ -44,17 +44,17 @@ const generateSVG = (languages: AggregatedLanguageStats[], organization: string)
       <g transform="translate(20, ${y})">
         <circle cx="8" cy="0" r="8" fill="${lang.color}"/>
         <text x="25" y="5" class="lang-name">${lang.language}</text>
-        <text x="180" y="5" class="lang-percent">${lang.percentage.toFixed(2)}%</text>
+        <text x="165" y="5" class="lang-percent">${lang.percentage.toFixed(2)}%</text>
       </g>`;
   };
 
   const createLanguageItemRight = (lang: AggregatedLanguageStats, index: number) => {
     const y = 80 + index * 35;
     return `
-      <g transform="translate(270, ${y})">
+      <g transform="translate(260, ${y})">
         <circle cx="8" cy="0" r="8" fill="${lang.color}"/>
         <text x="25" y="5" class="lang-name">${lang.language}</text>
-        <text x="180" y="5" class="lang-percent">${lang.percentage.toFixed(2)}%</text>
+        <text x="165" y="5" class="lang-percent">${lang.percentage.toFixed(2)}%</text>
       </g>`;
   };
 
@@ -88,7 +88,7 @@ const generateSVG = (languages: AggregatedLanguageStats[], organization: string)
 
       <!-- Background with border -->
       <rect width="500" height="${totalHeight}" fill="white" rx="10"/>
-      <rect width="500" height="${totalHeight}" fill="none" stroke="#e0e0e0" stroke-width="1" rx="10"/>
+      <rect x="0.5" y="0.5" width="499" height="${totalHeight - 1}" fill="none" stroke="#e0e0e0" stroke-width="1" rx="9.5"/>
       
       <!-- Title -->
       <text x="20" y="35" class="title">Most Used Languages</text>
