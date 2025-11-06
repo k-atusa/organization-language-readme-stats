@@ -86,8 +86,9 @@ const generateSVG = (languages: AggregatedLanguageStats[], organization: string)
         }
       </style>
 
-      <!-- Background -->
+      <!-- Background with border -->
       <rect width="500" height="${totalHeight}" fill="white" rx="10"/>
+      <rect width="500" height="${totalHeight}" fill="none" stroke="#e0e0e0" stroke-width="1" rx="10"/>
       
       <!-- Title -->
       <text x="20" y="35" class="title">Most Used Languages</text>
