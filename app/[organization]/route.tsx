@@ -1,59 +1,59 @@
-import { LanguageStatsData } from '@/types/language';
 import { NextRequest } from 'next/server';
+import { aggregateOrganizationLanguages, AggregatedLanguageStats } from '@/lib/github';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-// 임시 Mock 데이터 생성 함수
-const getMockData = (organization: string): LanguageStatsData => {
-  return {
-    organization,
-    languages: [
-      { name: 'JavaScript', percentage: 71.63, color: '#f1e05a' },
-      { name: 'HTML', percentage: 14.56, color: '#e34c26' },
-      { name: 'TypeScript', percentage: 9.36, color: '#3178c6' },
-      { name: 'CSS', percentage: 3.76, color: '#563d7c' },
-      { name: 'GLSL', percentage: 0.40, color: '#5686a5' },
-      { name: 'C++', percentage: 0.28, color: '#f34b7d' },
-    ],
-  };
-};
-
-const generateSVG = (data: LanguageStatsData): string => {
-  const { languages } = data;
+const generateSVG = (languages: AggregatedLanguageStats[], organization: string): string => {
   
   // 바 그래프용 좌표 계산
   let currentX = 0;
   const barHeight = 8;
   const barWidth = 460;
+  const borderRadius = 4;
   
-  const barSegments = languages.map((lang) => {
+  // 전체를 하나의 그룹으로 만들고 clipPath 사용
+  const barSegments = languages.map((lang, index) => {
     const width = (lang.percentage / 100) * barWidth;
-    const segment = `<rect x="${currentX}" y="0" width="${width}" height="${barHeight}" fill="${lang.color}" rx="4"/>`;
+    const x = currentX;
+    const segment = `<rect x="${x}" y="0" width="${width}" height="${barHeight}" fill="${lang.color}"/>`;
     currentX += width;
     return segment;
   }).join('\n      ');
+  
+  // clipPath를 사용하여 전체 바의 양 끝만 둥글게
+  const clipPathId = `rounded-bar-${Math.random().toString(36).substr(2, 9)}`;
+  const barWithClipPath = `
+    <defs>
+      <clipPath id="${clipPathId}">
+        <rect x="0" y="0" width="${barWidth}" height="${barHeight}" rx="${borderRadius}"/>
+      </clipPath>
+    </defs>
+    <g clip-path="url(#${clipPathId})">
+      ${barSegments}
+    </g>`;
 
   // 언어 리스트 (2열)
   const halfLength = Math.ceil(languages.length / 2);
   const leftColumn = languages.slice(0, halfLength);
   const rightColumn = languages.slice(halfLength);
 
-  const createLanguageItem = (lang: { name: string; percentage: number; color: string }, index: number) => {
+  const createLanguageItem = (lang: AggregatedLanguageStats, index: number) => {
     const y = 80 + index * 35;
     return `
       <g transform="translate(20, ${y})">
         <circle cx="8" cy="0" r="8" fill="${lang.color}"/>
-        <text x="25" y="5" class="lang-name">${lang.name}</text>
+        <text x="25" y="5" class="lang-name">${lang.language}</text>
         <text x="180" y="5" class="lang-percent">${lang.percentage.toFixed(2)}%</text>
       </g>`;
   };
 
-  const createLanguageItemRight = (lang: { name: string; percentage: number; color: string }, index: number) => {
+  const createLanguageItemRight = (lang: AggregatedLanguageStats, index: number) => {
     const y = 80 + index * 35;
     return `
       <g transform="translate(270, ${y})">
         <circle cx="8" cy="0" r="8" fill="${lang.color}"/>
-        <text x="25" y="5" class="lang-name">${lang.name}</text>
+        <text x="25" y="5" class="lang-name">${lang.language}</text>
         <text x="180" y="5" class="lang-percent">${lang.percentage.toFixed(2)}%</text>
       </g>`;
   };
@@ -94,7 +94,7 @@ const generateSVG = (data: LanguageStatsData): string => {
       
       <!-- Language Bar -->
       <g transform="translate(20, 50)">
-        ${barSegments}
+        ${barWithClipPath}
       </g>
 
       <!-- Language List -->
@@ -108,18 +108,35 @@ const generateSVG = (data: LanguageStatsData): string => {
 
 export const GET = async (
   request: NextRequest,
-  { params }: { params: { organization: string } }
+  { params }: { params: Promise<{ organization: string }> }
 ) => {
   try {
-    const organization = params.organization;
+    const { organization } = await params;
 
     if (!organization) {
       return new Response('Organization name is required', { status: 400 });
     }
 
-    // TODO: GitHub API에서 실제 데이터 가져오기
-    const data = getMockData(organization);
-    const svg = generateSVG(data);
+    // GitHub API에서 실제 데이터 가져오기
+    const languages = await aggregateOrganizationLanguages(organization);
+
+    if (languages.length === 0) {
+      return new Response(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="100">
+          <text x="250" y="50" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#666">
+            No language data found for organization: ${organization}
+          </text>
+        </svg>`,
+        {
+          headers: {
+            'Content-Type': 'image/svg+xml',
+            'Cache-Control': 'public, max-age=300, s-maxage=300',
+          },
+        }
+      );
+    }
+
+    const svg = generateSVG(languages, organization);
 
     return new Response(svg, {
       headers: {
@@ -129,6 +146,19 @@ export const GET = async (
     });
   } catch (error) {
     console.error('Error generating SVG:', error);
-    return new Response('Failed to generate SVG', { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="500" height="100">
+        <text x="250" y="50" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#ff0000">
+          Error: ${errorMessage}
+        </text>
+      </svg>`,
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'image/svg+xml',
+        },
+      }
+    );
   }
 };
