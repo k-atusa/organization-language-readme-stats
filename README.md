@@ -2,7 +2,7 @@
 
 A web service that generates SVG images of language usage statistics for GitHub organizations that can be embedded in README files.
 
-![Language Stats](https://your-domain.com/k-atusa)
+![Language Stats](https://organization-language-readme-stats.vercel.app/k-atusa)
 
 ## Features
 
