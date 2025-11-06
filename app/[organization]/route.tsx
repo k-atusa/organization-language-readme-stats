@@ -124,7 +124,35 @@ export const GET = async (
     }
 
     // GitHub API에서 실제 데이터 가져오기
-    const languages = await aggregateOrganizationLanguages(organization);
+    let languages = await aggregateOrganizationLanguages(organization);
+
+    // 제외할 언어 처리
+    const { searchParams } = new URL(request.url);
+    const excludeParam = searchParams.get('exclude');
+    
+    if (excludeParam) {
+      // 쉼표로 분리하고 대소문자 구분 없이 처리
+      const excludeList = excludeParam
+        .split(',')
+        .map(lang => lang.trim().toLowerCase())
+        .filter(lang => lang.length > 0);
+      
+      if (excludeList.length > 0) {
+        // 제외할 언어를 필터링
+        languages = languages.filter(
+          lang => !excludeList.includes(lang.language.toLowerCase())
+        );
+        
+        // 제외 후 남은 언어들의 비율을 다시 계산
+        const totalBytes = languages.reduce((sum, lang) => sum + lang.bytes, 0);
+        if (totalBytes > 0) {
+          languages = languages.map(lang => ({
+            ...lang,
+            percentage: (lang.bytes / totalBytes) * 100,
+          }));
+        }
+      }
+    }
 
     if (languages.length === 0) {
       return new Response(

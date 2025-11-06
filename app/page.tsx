@@ -4,9 +4,20 @@ import { useState } from 'react';
 
 export default function HomePage() {
   const [org, setOrg] = useState('k-atusa');
+  const [excludeLanguages, setExcludeLanguages] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const imageUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${org}`;
+  // URL 생성 (제외할 언어가 있으면 쿼리 파라미터 추가)
+  const getImageUrl = () => {
+    const baseUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${org}`;
+    if (excludeLanguages.trim()) {
+      const encoded = encodeURIComponent(excludeLanguages.trim());
+      return `${baseUrl}?exclude=${encoded}`;
+    }
+    return baseUrl;
+  };
+
+  const imageUrl = getImageUrl();
   const markdownCode = `![Language Stats](${imageUrl})`;
 
   const handleCopy = () => {
@@ -30,6 +41,20 @@ export default function HomePage() {
             onChange={(e) => setOrg(e.target.value)}
             placeholder="organization-name"
           />
+        </div>
+
+        <div className="input-section">
+          <label htmlFor="exclude-input">Exclude Languages (optional)</label>
+          <input
+            id="exclude-input"
+            type="text"
+            value={excludeLanguages}
+            onChange={(e) => setExcludeLanguages(e.target.value)}
+            placeholder="HTML, CSS, SCSS, Sass"
+          />
+          <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
+            Comma-separated list of languages to exclude from statistics
+          </small>
         </div>
 
         <div className="code-section">

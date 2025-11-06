@@ -75,6 +75,18 @@ body {
   border-color: #2b7de9;
 }
 
+.input-section input::placeholder {
+  color: #999;
+}
+
+.input-section small {
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  display: block;
+  line-height: 1.4;
+}
+
 .code-section {
   margin-bottom: 2rem;
 }
