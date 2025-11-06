@@ -1,3 +1,5 @@
+import { getLanguageColor } from '@/utils/colors';
+
 export interface Repository {
   name: string;
   full_name: string;
@@ -268,45 +270,4 @@ export async function aggregateOrganizationLanguages(
     console.error(`Error aggregating languages for ${org}:`, error);
     throw error; // 에러를 다시 던져서 API route에서 적절한 응답을 보낼 수 있도록
   }
-}
-
-// 언어별 GitHub 표준 색상
-const LANGUAGE_COLORS: { [key: string]: string } = {
-  JavaScript: '#f1e05a',
-  TypeScript: '#3178c6',
-  HTML: '#e34c26',
-  CSS: '#563d7c',
-  Python: '#3572A5',
-  Java: '#b07219',
-  'C++': '#f34b7d',
-  C: '#555555',
-  'C#': '#178600',
-  PHP: '#4F5D95',
-  Ruby: '#701516',
-  Go: '#00ADD8',
-  Rust: '#dea584',
-  Swift: '#ffac45',
-  Kotlin: '#A97BFF',
-  Dart: '#00B4AB',
-  Shell: '#89e051',
-  PowerShell: '#012456',
-  'Objective-C': '#438eff',
-  Scala: '#c22d40',
-  Perl: '#0298c3',
-  Haskell: '#5e5086',
-  Lua: '#000080',
-  R: '#198CE7',
-  Vim: '#199f4b',
-  Elixir: '#6e4a7e',
-  Clojure: '#db5855',
-  GLSL: '#5686a5',
-  Vue: '#41b883',
-  Svelte: '#ff3e00',
-  Batchfile: '#C1F12E',
-  Makefile: '#427819',
-  Dockerfile: '#384d54',
-};
-
-function getLanguageColor(language: string): string {
-  return LANGUAGE_COLORS[language] || '#cccccc';
 }
