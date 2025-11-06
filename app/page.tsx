@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 export default function HomePage() {
-  const [org, setOrg] = useState('k-atusa');
+  const [org, setOrg] = useState('');
   const [excludeLanguages, setExcludeLanguages] = useState('');
   const [maxLanguages, setMaxLanguages] = useState('');
   const [copied, setCopied] = useState(false);
@@ -50,7 +50,7 @@ export default function HomePage() {
             type="text"
             value={org}
             onChange={(e) => setOrg(e.target.value)}
-            placeholder="organization-name"
+            placeholder="Organization name (e.g., k-atusa)"
           />
         </div>
 
