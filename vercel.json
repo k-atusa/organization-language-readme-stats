@@ -5,7 +5,7 @@
   "framework": "nextjs",
   "regions": ["icn1"],
   "env": {
-    "GITHUB_TOKEN": "@github_token"
+    "GITHUB_TOKEN": "@GITHUB_TOKEN"
   },
   "headers": [
     {
