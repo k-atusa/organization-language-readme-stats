@@ -5,16 +5,27 @@ import { useState } from 'react';
 export default function HomePage() {
   const [org, setOrg] = useState('k-atusa');
   const [excludeLanguages, setExcludeLanguages] = useState('');
+  const [maxLanguages, setMaxLanguages] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // URL 생성 (제외할 언어가 있으면 쿼리 파라미터 추가)
+  // URL 생성 (제외할 언어와 최대 개수가 있으면 쿼리 파라미터 추가)
   const getImageUrl = () => {
     const baseUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/${org}`;
+    const params = new URLSearchParams();
+    
     if (excludeLanguages.trim()) {
-      const encoded = encodeURIComponent(excludeLanguages.trim());
-      return `${baseUrl}?exclude=${encoded}`;
+      params.append('exclude', excludeLanguages.trim());
     }
-    return baseUrl;
+    
+    if (maxLanguages.trim()) {
+      const maxNum = parseInt(maxLanguages.trim());
+      if (maxNum > 0) {
+        params.append('max', maxNum.toString());
+      }
+    }
+    
+    const queryString = params.toString();
+    return queryString ? `${baseUrl}?${queryString}` : baseUrl;
   };
 
   const imageUrl = getImageUrl();
@@ -52,8 +63,23 @@ export default function HomePage() {
             onChange={(e) => setExcludeLanguages(e.target.value)}
             placeholder="HTML, CSS, SCSS, Sass"
           />
-          <small style={{ color: '#666', marginTop: '5px', display: 'block' }}>
+          <small>
             Comma-separated list of languages to exclude from statistics
+          </small>
+        </div>
+
+        <div className="input-section">
+          <label htmlFor="max-input">Max Languages (optional)</label>
+          <input
+            id="max-input"
+            type="number"
+            min="1"
+            value={maxLanguages}
+            onChange={(e) => setMaxLanguages(e.target.value)}
+            placeholder="10"
+          />
+          <small>
+            Maximum number of languages to display. Others will be grouped as &quot;ETC&quot;
           </small>
         </div>
 

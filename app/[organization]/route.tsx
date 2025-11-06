@@ -126,10 +126,12 @@ export const GET = async (
     // GitHub API에서 실제 데이터 가져오기
     let languages = await aggregateOrganizationLanguages(organization);
 
-    // 제외할 언어 처리
+    // 쿼리 파라미터 처리
     const { searchParams } = new URL(request.url);
     const excludeParam = searchParams.get('exclude');
+    const maxParam = searchParams.get('max');
     
+    // 1. 제외할 언어 처리
     if (excludeParam) {
       // 쉼표로 분리하고 대소문자 구분 없이 처리
       const excludeList = excludeParam
@@ -150,6 +152,33 @@ export const GET = async (
             ...lang,
             percentage: (lang.bytes / totalBytes) * 100,
           }));
+        }
+      }
+    }
+
+    // 2. 최대 언어 개수 처리
+    if (maxParam) {
+      const maxLanguages = parseInt(maxParam);
+      if (maxLanguages > 0 && languages.length > maxLanguages) {
+        // 상위 n개만 표시하고 나머지는 ETC로 묶기
+        const topLanguages = languages.slice(0, maxLanguages);
+        const etcLanguages = languages.slice(maxLanguages);
+        
+        // ETC 항목 생성
+        const etcBytes = etcLanguages.reduce((sum, lang) => sum + lang.bytes, 0);
+        const totalBytes = languages.reduce((sum, lang) => sum + lang.bytes, 0);
+        
+        if (etcBytes > 0) {
+          const etcItem: AggregatedLanguageStats = {
+            language: 'ETC',
+            bytes: etcBytes,
+            percentage: (etcBytes / totalBytes) * 100,
+            color: '#000000', // 검은색
+          };
+          
+          languages = [...topLanguages, etcItem];
+        } else {
+          languages = topLanguages;
         }
       }
     }
